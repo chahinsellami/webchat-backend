@@ -1,0 +1,22 @@
+{
+  "name": "webchat-backend",
+  "version": "1.0.0",
+  "description": "WebChat Socket.IO and WebRTC signaling server",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["socket.io", "webrtc", "chat"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
