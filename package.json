@@ -8,7 +8,11 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["socket.io", "webrtc", "chat"],
+  "keywords": [
+    "socket.io",
+    "webrtc",
+    "chat"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
