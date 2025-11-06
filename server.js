@@ -1,10 +1,10 @@
 /**
  * WebChat Backend Server
- * 
+ *
  * Real-time messaging and WebRTC signaling server for the WebChat application.
  * Handles Socket.IO connections for instant messaging, typing indicators,
  * presence tracking, and peer-to-peer voice/video call signaling.
- * 
+ *
  * Features:
  * - Real-time direct messaging between users
  * - Typing indicator broadcasting
@@ -12,7 +12,7 @@
  * - WebRTC signaling for voice/video calls
  * - ICE candidate exchange for P2P connections
  * - Health check endpoint for monitoring
- * 
+ *
  * @requires http - Node.js HTTP server module
  * @requires socket.io - Real-time bidirectional event-based communication
  * @requires dotenv - Environment variable management
@@ -42,10 +42,10 @@ const httpServer = createServer();
 
 /**
  * Create Socket.IO server instance with CORS configuration
- * 
+ *
  * CORS settings allow the frontend application to connect from different origins.
  * Supports multiple origins including localhost and Vercel deployments.
- * 
+ *
  * Transports:
  * - websocket: Preferred real-time bidirectional communication protocol
  * - polling: Fallback mechanism for environments that don't support WebSocket
@@ -61,11 +61,11 @@ const io = new Server(httpServer, {
 
 /**
  * Active User Storage
- * 
+ *
  * users: Maps userId (string) to socketId (string)
  *        Used to find which socket to send messages to when targeting a specific user
  *        Example: users.set("user-123", "socket-abc") means user-123 is connected via socket-abc
- * 
+ *
  * socketToUser: Maps socketId (string) to userId (string)
  *               Reverse lookup to identify which user a socket belongs to
  *               Used during disconnect to clean up user data
@@ -76,10 +76,10 @@ const socketToUser = new Map();
 
 /**
  * Socket.IO Connection Handler
- * 
+ *
  * Triggered when a client successfully establishes a WebSocket connection.
  * Each connected client gets a unique socket object with a socket.id.
- * 
+ *
  * @param {Socket} socket - The socket instance representing this connection
  */
 io.on("connection", (socket) => {
@@ -87,11 +87,11 @@ io.on("connection", (socket) => {
 
   /**
    * Join Event Handler
-   * 
+   *
    * Called when a user identifies themselves after connecting.
    * Associates the user's ID with their socket ID for message routing.
    * Broadcasts to other users that this user is now online.
-   * 
+   *
    * @event join
    * @param {string} userId - The unique identifier of the user joining
    */
@@ -118,17 +118,17 @@ io.on("connection", (socket) => {
 
   /**
    * Send Message Event Handler
-   * 
+   *
    * Routes direct messages from one user to another in real-time.
    * Messages are NOT stored in the database here - that's handled by the API.
    * This server only delivers messages to online users instantly.
-   * 
+   *
    * Flow:
    * 1. Sender emits 'send-message' with message data
    * 2. Server receives it and looks up receiver's socket
    * 3. Server emits 'receive-message' to receiver's socket only
    * 4. Receiver's client displays the message instantly
-   * 
+   *
    * @event send-message
    * @param {Object} data - Message data object
    * @param {string} data.messageId - Unique ID for the message
@@ -168,11 +168,11 @@ io.on("connection", (socket) => {
 
   /**
    * Typing Indicator Event Handler
-   * 
+   *
    * Broadcasts typing status from one user to another.
    * Shows "User is typing..." indicator in the receiver's UI.
    * Typing indicators are temporary and not stored anywhere.
-   * 
+   *
    * @event typing
    * @param {Object} data - Typing indicator data
    * @param {string} data.senderId - User ID of the person typing
@@ -196,12 +196,12 @@ io.on("connection", (socket) => {
    * ============================================================================
    * WebRTC Signaling for Voice/Video Calls
    * ============================================================================
-   * 
+   *
    * WebRTC (Web Real-Time Communication) enables peer-to-peer audio/video calls.
    * This server acts as a "signaling server" to help two peers establish a
    * direct connection. Once connected, audio/video flows directly between peers,
    * not through this server.
-   * 
+   *
    * Signaling Process:
    * 1. Caller creates an "offer" (connection parameters)
    * 2. Server forwards offer to receiver via 'incoming-call'
@@ -209,7 +209,7 @@ io.on("connection", (socket) => {
    * 4. Server forwards answer to caller via 'call-accepted'
    * 5. Both peers exchange ICE candidates for NAT traversal
    * 6. Direct P2P connection established - server no longer involved in media
-   * 
+   *
    * Events handled:
    * - call-user: Initiate a call
    * - accept-call: Accept an incoming call
@@ -220,11 +220,11 @@ io.on("connection", (socket) => {
 
   /**
    * Call User Event Handler
-   * 
+   *
    * Initiates a voice or video call by forwarding the caller's WebRTC offer
    * to the recipient. The offer contains the caller's session description
    * (SDP) with media capabilities and connection information.
-   * 
+   *
    * @event call-user
    * @param {Object} data - Call initiation data
    * @param {string} data.from - User ID of the caller
@@ -239,7 +239,7 @@ io.on("connection", (socket) => {
       callType: data.callType,
       hasSignal: !!data.signal,
     });
-    
+
     // Look up recipient's socket
     const receiverSocketId = users.get(data.to);
     console.log(`🔍 Receiver ${data.to} socketId: ${receiverSocketId}`);
@@ -261,11 +261,11 @@ io.on("connection", (socket) => {
 
   /**
    * Accept Call Event Handler
-   * 
+   *
    * Called when the recipient accepts an incoming call.
    * Forwards the recipient's WebRTC answer back to the original caller,
    * allowing the P2P connection to be established.
-   * 
+   *
    * @event accept-call
    * @param {Object} data - Call acceptance data
    * @param {string} data.to - User ID of the original caller
@@ -273,7 +273,7 @@ io.on("connection", (socket) => {
    */
   socket.on("accept-call", (data) => {
     console.log(`✅ Call accepted by user, sending to ${data.to}`);
-    
+
     // Look up caller's socket
     const callerSocketId = users.get(data.to);
     console.log(`🔍 Caller socketId: ${callerSocketId}`);
@@ -292,17 +292,17 @@ io.on("connection", (socket) => {
 
   /**
    * Reject Call Event Handler
-   * 
+   *
    * Called when the recipient declines an incoming call.
    * Notifies the caller that their call was rejected.
-   * 
+   *
    * @event reject-call
    * @param {Object} data - Call rejection data
    * @param {string} data.to - User ID of the caller to notify
    */
   socket.on("reject-call", (data) => {
     console.log(`❌ Call rejected, notifying ${data.to}`);
-    
+
     const callerSocketId = users.get(data.to);
 
     if (callerSocketId) {
@@ -314,17 +314,17 @@ io.on("connection", (socket) => {
 
   /**
    * End Call Event Handler
-   * 
+   *
    * Called when either party ends an active call.
    * Notifies the other party so they can clean up their call UI.
-   * 
+   *
    * @event end-call
    * @param {Object} data - Call termination data
    * @param {string} data.to - User ID of the other party in the call
    */
   socket.on("end-call", (data) => {
     console.log(`📵 Call ended, notifying ${data.to}`);
-    
+
     const otherUserSocketId = users.get(data.to);
 
     if (otherUserSocketId) {
@@ -336,14 +336,14 @@ io.on("connection", (socket) => {
 
   /**
    * ICE Candidate Event Handler
-   * 
+   *
    * ICE (Interactive Connectivity Establishment) candidates are network
    * endpoints that WebRTC can use to establish a connection. This handler
    * forwards ICE candidates between peers during connection establishment.
-   * 
+   *
    * Multiple candidates may be exchanged as WebRTC discovers different
    * network paths (local network, NAT, relay servers, etc.).
-   * 
+   *
    * @event ice-candidate
    * @param {Object} data - ICE candidate data
    * @param {string} data.to - User ID to send the candidate to
@@ -351,7 +351,7 @@ io.on("connection", (socket) => {
    */
   socket.on("ice-candidate", (data) => {
     console.log(`🧊 ICE candidate from socket ${socket.id} to user ${data.to}`);
-    
+
     const receiverSocketId = users.get(data.to);
 
     if (receiverSocketId) {
@@ -365,16 +365,16 @@ io.on("connection", (socket) => {
 
   /**
    * Disconnect Event Handler
-   * 
+   *
    * Automatically triggered when a client's connection is lost.
    * Cleans up user data and notifies other users that this person is offline.
-   * 
+   *
    * Disconnect can happen due to:
    * - User closing the browser/tab
    * - Network connection lost
    * - Server restart
    * - Explicit socket.disconnect() call
-   * 
+   *
    * @event disconnect
    */
   socket.on("disconnect", () => {
@@ -383,7 +383,7 @@ io.on("connection", (socket) => {
 
     if (userId) {
       console.log(`👋 User ${userId} disconnected`);
-      
+
       // Remove user from both maps to free memory
       users.delete(userId);
       socketToUser.delete(socket.id);
@@ -399,20 +399,20 @@ io.on("connection", (socket) => {
 
 /**
  * Health Check HTTP Endpoint
- * 
+ *
  * Provides a simple HTTP endpoint to verify the server is running.
  * Useful for monitoring tools, load balancers, and deployment platforms.
- * 
+ *
  * Responds to GET requests at:
  * - / (root path)
  * - /health (explicit health check path)
- * 
+ *
  * Returns JSON with:
  * - status: "ok" if server is running
  * - service: Name of this service
  * - activeUsers: Number of currently connected users
  * - timestamp: Current server time in ISO format
- * 
+ *
  * Example response:
  * {
  *   "status": "ok",
@@ -437,11 +437,11 @@ httpServer.on("request", (req, res) => {
 
 /**
  * Start HTTP Server
- * 
+ *
  * Begins listening for connections on the configured PORT.
  * Both HTTP requests (health checks) and WebSocket connections
  * are handled through this same server instance.
- * 
+ *
  * Once started, the server will:
  * - Accept Socket.IO connections for real-time communication
  * - Respond to health check requests

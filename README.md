@@ -56,12 +56,13 @@ FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
 
 ### HTTP Endpoints
 
-| Endpoint | Method | Description                    |
-| -------- | ------ | ------------------------------ |
-| `/`      | GET    | Health check (returns status)  |
-| `/health`| GET    | Health check (returns status)  |
+| Endpoint  | Method | Description                   |
+| --------- | ------ | ----------------------------- |
+| `/`       | GET    | Health check (returns status) |
+| `/health` | GET    | Health check (returns status) |
 
 **Response Format:**
+
 ```json
 {
   "status": "ok",
@@ -75,31 +76,31 @@ FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
 
 #### Client → Server Events
 
-| Event           | Payload                                      | Description                          |
-| --------------- | -------------------------------------------- | ------------------------------------ |
-| `join`          | `userId: string`                             | User identifies themselves           |
-| `send-message`  | `{ messageId, senderId, receiverId, text }`  | Send direct message                  |
-| `typing`        | `{ senderId, receiverId, isTyping }`         | Typing indicator                     |
-| `call-user`     | `{ from, to, signal, callType }`             | Initiate voice/video call            |
-| `accept-call`   | `{ to, signal }`                             | Accept incoming call                 |
-| `reject-call`   | `{ to }`                                     | Reject incoming call                 |
-| `end-call`      | `{ to }`                                     | End active call                      |
-| `ice-candidate` | `{ to, candidate }`                          | Exchange ICE candidate for WebRTC    |
+| Event           | Payload                                     | Description                       |
+| --------------- | ------------------------------------------- | --------------------------------- |
+| `join`          | `userId: string`                            | User identifies themselves        |
+| `send-message`  | `{ messageId, senderId, receiverId, text }` | Send direct message               |
+| `typing`        | `{ senderId, receiverId, isTyping }`        | Typing indicator                  |
+| `call-user`     | `{ from, to, signal, callType }`            | Initiate voice/video call         |
+| `accept-call`   | `{ to, signal }`                            | Accept incoming call              |
+| `reject-call`   | `{ to }`                                    | Reject incoming call              |
+| `end-call`      | `{ to }`                                    | End active call                   |
+| `ice-candidate` | `{ to, candidate }`                         | Exchange ICE candidate for WebRTC |
 
 #### Server → Client Events
 
-| Event            | Payload                                     | Description                          |
-| ---------------- | ------------------------------------------- | ------------------------------------ |
-| `user-online`    | `userId: string`                            | User came online                     |
-| `user-offline`   | `userId: string`                            | User went offline                    |
-| `receive-message`| `{ messageId, senderId, receiverId, text }` | Receive direct message               |
-| `user-typing`    | `{ userId, isTyping }`                      | User typing status changed           |
-| `incoming-call`  | `{ from, signal, callType }`                | Incoming call notification           |
-| `call-accepted`  | `{ signal }`                                | Call was accepted                    |
-| `call-rejected`  | -                                           | Call was rejected                    |
-| `call-ended`     | -                                           | Call was terminated                  |
-| `call-failed`    | `{ reason }`                                | Call failed (user offline)           |
-| `ice-candidate`  | `{ candidate }`                             | ICE candidate for WebRTC             |
+| Event             | Payload                                     | Description                |
+| ----------------- | ------------------------------------------- | -------------------------- |
+| `user-online`     | `userId: string`                            | User came online           |
+| `user-offline`    | `userId: string`                            | User went offline          |
+| `receive-message` | `{ messageId, senderId, receiverId, text }` | Receive direct message     |
+| `user-typing`     | `{ userId, isTyping }`                      | User typing status changed |
+| `incoming-call`   | `{ from, signal, callType }`                | Incoming call notification |
+| `call-accepted`   | `{ signal }`                                | Call was accepted          |
+| `call-rejected`   | -                                           | Call was rejected          |
+| `call-ended`      | -                                           | Call was terminated        |
+| `call-failed`     | `{ reason }`                                | Call failed (user offline) |
+| `ice-candidate`   | `{ candidate }`                             | ICE candidate for WebRTC   |
 
 ## Architecture
 
@@ -131,6 +132,7 @@ FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
 ### Deploy to Railway
 
 1. **Prepare repository**
+
    ```bash
    git init
    git add .
@@ -139,11 +141,13 @@ FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
    ```
 
 2. **Connect to Railway**
+
    - Go to [railway.app](https://railway.app)
    - Create new project from GitHub
    - Select this repository
 
 3. **Configure environment**
+
    - Set `FRONTEND_URL` to your deployed frontend URL
    - Railway auto-assigns `PORT` - no need to set manually
 
@@ -155,6 +159,7 @@ FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
 ### Deploy to Other Platforms
 
 **Heroku:**
+
 ```bash
 heroku create your-app-name
 heroku config:set FRONTEND_URL=https://your-frontend.vercel.app
@@ -162,6 +167,7 @@ git push heroku main
 ```
 
 **Render:**
+
 - Connect GitHub repository
 - Set environment variables in dashboard
 - Deploy with one click
@@ -182,6 +188,7 @@ backend-server/
 ### Code Organization
 
 **server.js** contains:
+
 - HTTP server creation
 - Socket.IO configuration with CORS
 - User mapping storage (userId ↔ socketId)
@@ -190,6 +197,7 @@ backend-server/
 - Server startup logic
 
 All code is thoroughly commented with:
+
 - File-level documentation
 - Function/handler documentation
 - Inline explanations for complex logic
@@ -198,17 +206,20 @@ All code is thoroughly commented with:
 ### Testing Locally
 
 1. **Start backend server:**
+
    ```bash
    npm start
    ```
 
 2. **Start frontend app:**
+
    ```bash
    cd ../webchat-app
    npm run dev
    ```
 
 3. **Open multiple browser tabs:**
+
    - http://localhost:3000 (Tab 1)
    - http://localhost:3000 (Tab 2)
    - Login as different users
@@ -224,11 +235,13 @@ All code is thoroughly commented with:
 ### Port Already in Use
 
 **Windows:**
+
 ```powershell
 Get-Process node | Stop-Process -Force
 ```
 
 **Linux/Mac:**
+
 ```bash
 lsof -i :3001 | grep LISTEN | awk '{print $2}' | xargs kill -9
 ```
@@ -275,6 +288,7 @@ curl http://localhost:3001/health
 ```
 
 Use for:
+
 - Deployment health checks
 - Monitoring tools (UptimeRobot, Pingdom)
 - Load balancer health probes
@@ -311,6 +325,7 @@ MIT License - Free for personal and commercial use.
 ## Support
 
 For help:
+
 - Check server logs in terminal
 - Review code comments in `server.js`
 - Test health endpoint: `curl http://localhost:3001/health`
