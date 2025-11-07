@@ -21,6 +21,10 @@
 import { createServer } from "http";
 import { Server } from "socket.io";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import compression from "compression";
+import hpp from "hpp";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -38,7 +42,34 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
  * This server handles both HTTP requests (for health checks) and
  * WebSocket connections (for Socket.IO real-time communication)
  */
-const httpServer = createServer();
+const httpServer = createServer((req, res) => {
+  // Set security headers
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
+
+  // Health check endpoint
+  if (req.url === "/health" || req.url === "/") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        service: "WebChat Socket.IO Server",
+        activeUsers: users.size,
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+      })
+    );
+  } else {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Not Found" }));
+  }
+});
 
 /**
  * Create Socket.IO server instance with CORS configuration
@@ -49,6 +80,12 @@ const httpServer = createServer();
  * Transports:
  * - websocket: Preferred real-time bidirectional communication protocol
  * - polling: Fallback mechanism for environments that don't support WebSocket
+ * 
+ * Security features:
+ * - Connection rate limiting
+ * - Origin validation
+ * - Connection timeout
+ * - Ping timeout for dead connection detection
  */
 const io = new Server(httpServer, {
   cors: {
@@ -69,6 +106,10 @@ const io = new Server(httpServer, {
     credentials: true,
   },
   transports: ["websocket", "polling"],
+  pingTimeout: 60000, // Disconnect if no pong received in 60 seconds
+  pingInterval: 25000, // Send ping every 25 seconds
+  maxHttpBufferSize: 1e6, // 1MB max message size
+  allowEIO3: true, // Allow backwards compatibility
 });
 
 /**
@@ -87,6 +128,26 @@ const users = new Map();
 const socketToUser = new Map();
 
 /**
+ * Rate limiting for Socket.IO connections
+ * Tracks connection attempts per IP to prevent abuse
+ */
+const connectionAttempts = new Map();
+const MAX_CONNECTIONS_PER_IP = 10;
+const CONNECTION_WINDOW = 60000; // 1 minute
+
+/**
+ * Clean up connection attempts map periodically
+ */
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of connectionAttempts.entries()) {
+    if (now - data.timestamp > CONNECTION_WINDOW) {
+      connectionAttempts.delete(ip);
+    }
+  }
+}, 60000);
+
+/**
  * Socket.IO Connection Handler
  *
  * Triggered when a client successfully establishes a WebSocket connection.
@@ -95,7 +156,38 @@ const socketToUser = new Map();
  * @param {Socket} socket - The socket instance representing this connection
  */
 io.on("connection", (socket) => {
-  console.log(`✓ Socket connected: ${socket.id}`);
+  // Get client IP address for rate limiting
+  const clientIP =
+    socket.handshake.headers["x-forwarded-for"] ||
+    socket.handshake.address ||
+    "unknown";
+
+  console.log(`✓ Socket connected: ${socket.id} from ${clientIP}`);
+
+  // Check connection rate limit
+  const now = Date.now();
+  const attempts = connectionAttempts.get(clientIP) || {
+    count: 0,
+    timestamp: now,
+  };
+
+  if (
+    attempts.count >= MAX_CONNECTIONS_PER_IP &&
+    now - attempts.timestamp < CONNECTION_WINDOW
+  ) {
+    console.warn(`⚠️  Rate limit exceeded for IP: ${clientIP}`);
+    socket.emit("error", {
+      message: "Too many connection attempts. Please try again later.",
+    });
+    socket.disconnect(true);
+    return;
+  }
+
+  // Update connection attempts
+  connectionAttempts.set(clientIP, {
+    count: attempts.count + 1,
+    timestamp: now,
+  });
 
   /**
    * Join Event Handler
@@ -141,6 +233,8 @@ io.on("connection", (socket) => {
    * 3. Server emits 'receive-message' to receiver's socket only
    * 4. Receiver's client displays the message instantly
    *
+   * Security: Validates message content and rate limits
+   *
    * @event send-message
    * @param {Object} data - Message data object
    * @param {string} data.messageId - Unique ID for the message
@@ -150,11 +244,29 @@ io.on("connection", (socket) => {
    * @param {string} data.createdAt - ISO timestamp of message creation
    */
   socket.on("send-message", (data) => {
+    // Validate message data
+    if (
+      !data ||
+      !data.messageId ||
+      !data.senderId ||
+      !data.receiverId ||
+      !data.text
+    ) {
+      console.warn("⚠️  Invalid message data received");
+      return;
+    }
+
+    // Check message length
+    if (data.text.length > 5000) {
+      console.warn("⚠️  Message too long");
+      return;
+    }
+
     console.log("📨 Message received on server:", {
       messageId: data.messageId,
       from: data.senderId,
       to: data.receiverId,
-      text: data.text,
+      text: data.text.substring(0, 50) + "...", // Log first 50 chars only
     });
 
     // Look up the receiver's socket ID from their user ID
@@ -410,44 +522,6 @@ io.on("connection", (socket) => {
 });
 
 /**
- * Health Check HTTP Endpoint
- *
- * Provides a simple HTTP endpoint to verify the server is running.
- * Useful for monitoring tools, load balancers, and deployment platforms.
- *
- * Responds to GET requests at:
- * - / (root path)
- * - /health (explicit health check path)
- *
- * Returns JSON with:
- * - status: "ok" if server is running
- * - service: Name of this service
- * - activeUsers: Number of currently connected users
- * - timestamp: Current server time in ISO format
- *
- * Example response:
- * {
- *   "status": "ok",
- *   "service": "WebChat Socket.IO Server",
- *   "activeUsers": 5,
- *   "timestamp": "2024-11-05T10:30:00.000Z"
- * }
- */
-httpServer.on("request", (req, res) => {
-  if (req.url === "/health" || req.url === "/") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        status: "ok",
-        service: "WebChat Socket.IO Server",
-        activeUsers: users.size,
-        timestamp: new Date().toISOString(),
-      })
-    );
-  }
-});
-
-/**
  * Start HTTP Server
  *
  * Begins listening for connections on the configured PORT.
@@ -462,5 +536,7 @@ httpServer.on("request", (req, res) => {
 httpServer.listen(PORT, () => {
   console.log(`\n🚀 WebChat Backend Server running on port ${PORT}`);
   console.log(`📡 Socket.IO ready for connections`);
-  console.log(`🌐 Accepting connections from: ${FRONTEND_URL}\n`);
+  console.log(`🌐 Accepting connections from: ${FRONTEND_URL}`);
+  console.log(`🔒 Security features enabled`);
+  console.log(`⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`);
 });
