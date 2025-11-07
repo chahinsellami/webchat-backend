@@ -56,13 +56,13 @@ const io = new Server(httpServer, {
       const allowedOrigins = [
         FRONTEND_URL,
         "http://localhost:3000",
-        "https://chatapp-two-drab.vercel.app"
+        "https://chatapp-two-drab.vercel.app",
       ];
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"));
       }
     },
     methods: ["GET", "POST"],
