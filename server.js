@@ -52,7 +52,19 @@ const httpServer = createServer();
  */
 const io = new Server(httpServer, {
   cors: {
-    origin: [FRONTEND_URL, "https://*.vercel.app", "http://localhost:3000"],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "https://chatapp-two-drab.vercel.app"
+      ];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
