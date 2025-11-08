@@ -80,7 +80,7 @@ const httpServer = createServer((req, res) => {
  * Transports:
  * - websocket: Preferred real-time bidirectional communication protocol
  * - polling: Fallback mechanism for environments that don't support WebSocket
- * 
+ *
  * Security features:
  * - Connection rate limiting
  * - Origin validation
@@ -384,6 +384,48 @@ io.on("connection", (socket) => {
   });
 
   /**
+   * Agora Call Request Event Handler
+   * 
+   * Called when a user initiates a call using Agora.io
+   * Sends call notification to the recipient with channel info
+   *
+   * @event call-request
+   * @param {Object} data - Call request data
+   * @param {string} data.to - User ID of the person being called
+   * @param {string} data.channelName - Agora channel name to join
+   * @param {string} data.callType - Type of call: "voice" or "video"
+   * @param {string} data.callerName - Display name of the caller
+   */
+  socket.on("call-request", (data) => {
+    console.log(`📞 Agora call initiated:`, {
+      from: socket.userId,
+      to: data.to,
+      channelName: data.channelName,
+      callType: data.callType,
+      callerName: data.callerName,
+    });
+
+    // Look up recipient's socket
+    const receiverSocketId = users.get(data.to);
+    console.log(`🔍 Receiver ${data.to} socketId: ${receiverSocketId}`);
+
+    if (receiverSocketId) {
+      // Forward the call request to the recipient
+      io.to(receiverSocketId).emit("incoming-call", {
+        from: socket.userId,
+        channelName: data.channelName,
+        callType: data.callType,
+        callerName: data.callerName,
+      });
+      console.log(`✅ Call request sent to ${receiverSocketId}`);
+    } else {
+      // Recipient is offline - notify caller that call failed
+      console.log(`❌ Receiver ${data.to} not connected`);
+      socket.emit("call-failed", { reason: "User not online" });
+    }
+  });
+
+  /**
    * Accept Call Event Handler
    *
    * Called when the recipient accepts an incoming call.
@@ -538,5 +580,7 @@ httpServer.listen(PORT, () => {
   console.log(`📡 Socket.IO ready for connections`);
   console.log(`🌐 Accepting connections from: ${FRONTEND_URL}`);
   console.log(`🔒 Security features enabled`);
-  console.log(`⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`);
+  console.log(
+    `⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`
+  );
 });
