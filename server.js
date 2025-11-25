@@ -148,6 +148,14 @@ io.on("connection", (socket) => {
   // Check connection rate limit
   const now = Date.now();
   const attempts = connectionAttempts.get(clientIP) || {
+    import express from "express";
+    import helmet from "helmet";
+    import hpp from "hpp";
+    import compression from "compression";
+    import mongoSanitize from "express-mongo-sanitize";
+    import cors from "cors";
+    import { createServer } from "http";
+    import { Server } from "socket.io";
     count: 0,
     timestamp: now,
   };
