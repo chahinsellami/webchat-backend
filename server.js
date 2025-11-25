@@ -5,34 +5,11 @@
  * Handles Socket.IO connections for instant messaging, typing indicators,
  * presence tracking, and peer-to-peer voice/video call signaling.
  *
- * Features:
- * - Real-time direct messaging between users
- * - Typing indicator broadcasting
- * - Online/offline presence tracking
- * - WebRTC signaling for voice/video calls
- * - ICE candidate exchange for P2P connections
- * - Health check endpoint for monitoring
- *
- * @requires http - Node.js HTTP server module
- * @requires socket.io - Real-time bidirectional event-based communication
- * @requires dotenv - Environment variable management
- */
-
-import { createServer } from "http";
-import { Server } from "socket.io";
-import dotenv from "dotenv";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import compression from "compression";
-import hpp from "hpp";
-
-// Load environment variables from .env file
-dotenv.config();
-
 /**
- * Server configuration constants
- * PORT: The port number the server will listen on (default: 3001)
- * FRONTEND_URL: The URL of the frontend application for CORS configuration
+ * Create HTTP server from Express app
+ * This server handles both HTTP requests (for health checks) and
+ * WebSocket connections (for Socket.IO real-time communication)
+ * See Express and Socket.IO setup below.
  */
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -42,34 +19,54 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
  * This server handles both HTTP requests (for health checks) and
  * WebSocket connections (for Socket.IO real-time communication)
  */
-const httpServer = createServer((req, res) => {
-  // Set security headers
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.setHeader(
-    "Strict-Transport-Security",
-    "max-age=31536000; includeSubDomains"
-  );
 
-  // Health check endpoint
-  if (req.url === "/health" || req.url === "/") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        status: "ok",
-        service: "WebChat Socket.IO Server",
-        activeUsers: users.size,
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-      })
-    );
-  } else {
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Not Found" }));
-  }
+// Create Express app
+const app = express();
+
+// Security middleware
+app.use(helmet());
+app.use(hpp());
+app.use(compression());
+app.use(mongoSanitize());
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// CORS configuration
+const allowedOrigins = [
+  FRONTEND_URL,
+  "http://localhost:3000",
+  "https://chatapp-two-drab.vercel.app",
+];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST"],
+  })
+);
+
+// Health check endpoint
+app.get(["/health", "/"], (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "WebChat Socket.IO Server",
+    // users may not be defined yet, so fallback to 0
+    activeUsers: typeof users !== "undefined" ? users.size : 0,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+  });
 });
+
+// Create HTTP server from Express app
+const httpServer = createServer(app);
 
 /**
  * Create Socket.IO server instance with CORS configuration
@@ -88,23 +85,7 @@ const httpServer = createServer((req, res) => {
  * - Ping timeout for dead connection detection
  */
 const io = new Server(httpServer, {
-  cors: {
-    origin: function (origin, callback) {
-      const allowedOrigins = [
-        FRONTEND_URL,
-        "http://localhost:3000",
-        "https://chatapp-two-drab.vercel.app",
-      ];
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
+  cors: false, // CORS is now handled by Express
   transports: ["websocket", "polling"],
   pingTimeout: 60000, // Disconnect if no pong received in 60 seconds
   pingInterval: 25000, // Send ping every 25 seconds
@@ -385,7 +366,7 @@ io.on("connection", (socket) => {
 
   /**
    * Agora Call Request Event Handler
-   * 
+   *
    * Called when a user initiates a call using Agora.io
    * Sends call notification to the recipient with channel info
    *
