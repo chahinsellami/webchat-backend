@@ -64,34 +64,14 @@ Check health: **http://localhost:3001/health**
 
 ## 📦 Deployment
 
-### Option 1: Replit (Recommended for No Credit Card)
-
-**Steps:**
-
-1. Go to [replit.com](https://replit.com)
-2. Click "Create" → "Import from GitHub"
-3. Enter: `https://github.com/chahinsellami/webchat-backend`
-4. Wait for import to complete
-5. Click "Secrets" (lock icon) and add:
-   ```
-   PORT=3001
-   FRONTEND_URL=https://your-vercel-app.vercel.app
-   ```
-6. Click "Run" button
-7. Wait for "Server running on port 3001" message
-8. Copy the public URL from top-right
-9. Update `NEXT_PUBLIC_SOCKET_URL` in frontend with this URL
-
-**Note:** Free tier sleeps after 1 hour of inactivity (wakes on request)
-
-### Option 2: Railway
+### Option 1: Railway
 
 1. Go to [railway.app](https://railway.app)
 2. Connect GitHub repository
 3. Set `FRONTEND_URL` environment variable
 4. Deploy
 
-### Option 3: Render
+### Option 2: Render
 
 1. Go to [render.com](https://render.com)
 2. Create new Web Service from GitHub
