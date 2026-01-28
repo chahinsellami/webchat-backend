@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  webchat-backend:
+    build: .
+    container_name: webchat-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - FRONTEND_URL=http://localhost:3000
+    restart: unless-stopped
+    networks:
+      - webchat-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  webchat-network:
+    driver: bridge

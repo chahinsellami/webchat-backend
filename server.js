@@ -4,13 +4,18 @@
  * Real-time messaging and WebRTC signaling server for the WebChat application.
  * Handles Socket.IO connections for instant messaging, typing indicators,
  * presence tracking, and peer-to-peer voice/video call signaling.
- *
-/**
- * Create HTTP server from Express app
- * This server handles both HTTP requests (for health checks) and
- * WebSocket connections (for Socket.IO real-time communication)
- * See Express and Socket.IO setup below.
  */
+
+// Import required modules
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import helmet from "helmet";
+import hpp from "hpp";
+import compression from "compression";
+import cors from "cors";
+import "dotenv/config";
+
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
@@ -27,7 +32,6 @@ const app = express();
 app.use(helmet());
 app.use(hpp());
 app.use(compression());
-app.use(mongoSanitize());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
@@ -35,6 +39,9 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 const allowedOrigins = [
   FRONTEND_URL,
   "http://localhost:3000",
+  "http://localhost:3001",
+  "http://192.168.100.12:3000",
+  "http://192.168.100.12:3001",
   "https://chatapp-two-drab.vercel.app",
 ];
 app.use(
@@ -148,14 +155,6 @@ io.on("connection", (socket) => {
   // Check connection rate limit
   const now = Date.now();
   const attempts = connectionAttempts.get(clientIP) || {
-    import express from "express";
-    import helmet from "helmet";
-    import hpp from "hpp";
-    import compression from "compression";
-    import mongoSanitize from "express-mongo-sanitize";
-    import cors from "cors";
-    import { createServer } from "http";
-    import { Server } from "socket.io";
     count: 0,
     timestamp: now,
   };
