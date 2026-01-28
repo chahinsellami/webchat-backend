@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: webchat-postgres
+    environment:
+      POSTGRES_USER: webchat
+      POSTGRES_PASSWORD: webchat123
+      POSTGRES_DB: webchat
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - webchat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webchat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   webchat-backend:
     build: .
     container_name: webchat-backend
@@ -10,6 +30,10 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://webchat:webchat123@postgres:5432/webchat
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - webchat-network
@@ -19,6 +43,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  postgres_data:
 
 networks:
   webchat-network:
