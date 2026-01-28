@@ -1,336 +1,255 @@
 # WebChat Backend Server
 
-Real-time messaging and WebRTC signaling server for the WebChat application. Built with Socket.IO and Node.js.
+A real-time messaging and WebRTC signaling server powering the WebChat application. Built with Node.js and Socket.IO for instant messaging, presence tracking, and peer-to-peer voice/video call establishment.
 
-## Features
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8-010101?logo=socket.io)](https://socket.io/)
+[![Express](https://img.shields.io/badge/Express-5.1-000000?logo=express)](https://expressjs.com/)
 
-- **Real-time Messaging** - Instant message delivery between connected users
+## ✨ Features
+
+- **Real-time Messaging** - Instant message delivery with Socket.IO
 - **Presence Tracking** - Online/offline status broadcasting
-- **Typing Indicators** - Live typing status for better UX
-- **WebRTC Signaling** - Voice and video call establishment
-- **ICE Candidate Exchange** - NAT traversal for P2P connections
-- **Health Monitoring** - HTTP endpoint for server status checks
+- **Typing Indicators** - Live typing status for better user experience
+- **WebRTC Signaling** - Voice and video call negotiation
+- **ICE Candidate Exchange** - NAT traversal for peer-to-peer connections
+- **Health Monitoring** - Status endpoint for deployment health checks
+- **Security** - CORS, helmet, compression middleware
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Node.js** - JavaScript runtime
-- **Socket.IO** - Real-time bidirectional communication
-- **HTTP** - Health check endpoint
-- **dotenv** - Environment configuration
+| Component | Technology |
+|-----------|-----------|
+| **Runtime** | Node.js 18+ |
+| **Framework** | Express 5.1 |
+| **Real-time** | Socket.IO 4.8 |
+| **Security** | Helmet, CORS, HPP, Express Rate Limit |
+| **Performance** | Compression, dotenv |
 
-## Installation
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18 or higher
+- Git
+
+### Installation
 
 ```bash
+# Clone repository
+git clone https://github.com/chahinsellami/webchat-backend.git
+cd webchat-backend
+
 # Install dependencies
 npm install
+```
 
-# Create environment file
-cp .env.example .env
+### Environment Configuration
 
-# Configure environment variables
-# Edit .env and set PORT and FRONTEND_URL
+Create `.env` file in root directory:
 
-# Start the server
+```env
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+```
+
+### Run Locally
+
+```bash
 npm start
 ```
 
-## Development
+Server will run on **http://localhost:3001**
 
-For development with auto-reload on file changes:
+Check health: **http://localhost:3001/health**
 
-```bash
-npm run dev
-```
+## 📦 Deployment
 
-## Environment Variables
+### Option 1: Replit (Recommended for No Credit Card)
 
-Create a `.env` file in the root directory:
+**Steps:**
 
-```env
-# Server Configuration
-PORT=3001                              # Server port (Railway auto-assigns in production)
-FRONTEND_URL=http://localhost:3000    # Frontend URL for CORS
-```
+1. Go to [replit.com](https://replit.com)
+2. Click "Create" → "Import from GitHub"
+3. Enter: `https://github.com/chahinsellami/webchat-backend`
+4. Wait for import to complete
+5. Click "Secrets" (lock icon) and add:
+   ```
+   PORT=3001
+   FRONTEND_URL=https://your-vercel-app.vercel.app
+   ```
+6. Click "Run" button
+7. Wait for "Server running on port 3001" message
+8. Copy the public URL from top-right
+9. Update `NEXT_PUBLIC_SOCKET_URL` in frontend with this URL
 
-## API Endpoints
+**Note:** Free tier sleeps after 1 hour of inactivity (wakes on request)
+
+### Option 2: Railway
+
+1. Go to [railway.app](https://railway.app)
+2. Connect GitHub repository
+3. Set `FRONTEND_URL` environment variable
+4. Deploy
+
+### Option 3: Render
+
+1. Go to [render.com](https://render.com)
+2. Create new Web Service from GitHub
+3. Set environment variables
+4. Deploy
+
+## 📡 API Reference
 
 ### HTTP Endpoints
 
-| Endpoint  | Method | Description                   |
-| --------- | ------ | ----------------------------- |
-| `/`       | GET    | Health check (returns status) |
-| `/health` | GET    | Health check (returns status) |
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/` | GET | Health check |
+| `/health` | GET | Server status with metrics |
 
-**Response Format:**
-
+**Health Response:**
 ```json
 {
   "status": "ok",
   "service": "WebChat Socket.IO Server",
   "activeUsers": 5,
-  "timestamp": "2024-11-05T10:30:00.000Z"
+  "timestamp": "2024-01-28T10:30:00.000Z",
+  "uptime": 3600,
+  "memory": {...}
 }
 ```
 
 ### Socket.IO Events
 
-#### Client → Server Events
+#### Client → Server
 
-| Event           | Payload                                     | Description                       |
-| --------------- | ------------------------------------------- | --------------------------------- |
-| `join`          | `userId: string`                            | User identifies themselves        |
-| `send-message`  | `{ messageId, senderId, receiverId, text }` | Send direct message               |
-| `typing`        | `{ senderId, receiverId, isTyping }`        | Typing indicator                  |
-| `call-user`     | `{ from, to, signal, callType }`            | Initiate voice/video call         |
-| `accept-call`   | `{ to, signal }`                            | Accept incoming call              |
-| `reject-call`   | `{ to }`                                    | Reject incoming call              |
-| `end-call`      | `{ to }`                                    | End active call                   |
-| `ice-candidate` | `{ to, candidate }`                         | Exchange ICE candidate for WebRTC |
+| Event | Payload | Purpose |
+|-------|---------|---------|
+| `join` | `{userId}` | Register user connection |
+| `send-message` | `{messageId, senderId, receiverId, text}` | Send message |
+| `typing` | `{senderId, receiverId, isTyping}` | Typing indicator |
+| `call-user` | `{from, to, signal, callType}` | Initiate call |
+| `accept-call` | `{to, signal}` | Accept call |
+| `reject-call` | `{to}` | Reject call |
+| `end-call` | `{to}` | End call |
+| `ice-candidate` | `{to, candidate}` | WebRTC ICE candidate |
 
-#### Server → Client Events
+#### Server → Client
 
-| Event             | Payload                                     | Description                |
-| ----------------- | ------------------------------------------- | -------------------------- |
-| `user-online`     | `userId: string`                            | User came online           |
-| `user-offline`    | `userId: string`                            | User went offline          |
-| `receive-message` | `{ messageId, senderId, receiverId, text }` | Receive direct message     |
-| `user-typing`     | `{ userId, isTyping }`                      | User typing status changed |
-| `incoming-call`   | `{ from, signal, callType }`                | Incoming call notification |
-| `call-accepted`   | `{ signal }`                                | Call was accepted          |
-| `call-rejected`   | -                                           | Call was rejected          |
-| `call-ended`      | -                                           | Call was terminated        |
-| `call-failed`     | `{ reason }`                                | Call failed (user offline) |
-| `ice-candidate`   | `{ candidate }`                             | ICE candidate for WebRTC   |
+| Event | Payload | Purpose |
+|-------|---------|---------|
+| `user-online` | `{userId}` | User came online |
+| `user-offline` | `{userId}` | User went offline |
+| `receive-message` | `{messageId, senderId, text}` | Receive message |
+| `user-typing` | `{userId, isTyping}` | User typing status |
+| `incoming-call` | `{from, signal, callType}` | Incoming call |
+| `call-accepted` | `{signal}` | Call accepted |
+| `call-rejected` | - | Call rejected |
+| `call-ended` | - | Call ended |
+| `ice-candidate` | `{candidate}` | ICE candidate from peer |
 
-## Architecture
+## 🏗️ Architecture
 
-### Connection Flow
+**Connection Flow:**
+1. Client connects via WebSocket
+2. Client emits `join` with userId
+3. Server stores userId ↔ socketId mapping
+4. Server broadcasts `user-online` to other clients
 
-1. **Client Connects** → WebSocket connection established
-2. **User Joins** → Client emits `join` with userId
-3. **Server Maps** → Stores userId ↔ socketId mapping
-4. **Broadcast Online** → Notifies other users
+**Message Flow:**
+1. Sender emits `send-message`
+2. Server forwards to receiver's socket
+3. Receiver displays instantly
+4. No server storage (handled by database)
 
-### Message Flow
+**WebRTC Call Flow:**
+1. Caller creates offer → emits `call-user`
+2. Server forwards via `incoming-call` to receiver
+3. Receiver creates answer → emits `accept-call`
+4. Both peers exchange ICE candidates
+5. P2P connection established (media bypasses server)
 
-1. **Sender** emits `send-message` with message data
-2. **Server** receives and looks up receiver's socketId
-3. **Server** emits `receive-message` to receiver's socket only
-4. **Receiver** displays message instantly
+## 🧪 Development
 
-### Call Flow (WebRTC Signaling)
-
-1. **Caller** creates offer and emits `call-user`
-2. **Server** forwards offer via `incoming-call` to receiver
-3. **Receiver** creates answer and emits `accept-call`
-4. **Server** forwards answer via `call-accepted` to caller
-5. **Both peers** exchange ICE candidates via `ice-candidate`
-6. **P2P connection** established (media bypasses server)
-
-## Deployment
-
-### Deploy to Railway
-
-1. **Prepare repository**
-
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
-   ```
-
-2. **Connect to Railway**
-
-   - Go to [railway.app](https://railway.app)
-   - Create new project from GitHub
-   - Select this repository
-
-3. **Configure environment**
-
-   - Set `FRONTEND_URL` to your deployed frontend URL
-   - Railway auto-assigns `PORT` - no need to set manually
-
-4. **Deploy**
-   - Railway auto-deploys on push to main branch
-   - View logs in Railway dashboard
-   - Copy the public URL for your frontend config
-
-### Deploy to Other Platforms
-
-**Heroku:**
-
+**Auto-reload on changes:**
 ```bash
-heroku create your-app-name
-heroku config:set FRONTEND_URL=https://your-frontend.vercel.app
-git push heroku main
+npm run dev
 ```
 
-**Render:**
+**Run tests:**
+```bash
+npm test
+npm run test:coverage
+```
 
-- Connect GitHub repository
-- Set environment variables in dashboard
-- Deploy with one click
-
-## Development Guide
-
-### Project Structure
-
+**Project Structure:**
 ```
 backend-server/
-├── server.js           # Main server file (Socket.IO + HTTP)
-├── package.json        # Dependencies and scripts
-├── .env                # Environment variables (create this)
-├── .env.example        # Environment template
-└── README.md           # This file
+├── server.js           # Main Socket.IO + Express server
+├── package.json        # Dependencies
+├── .env                # Environment variables (create from .env.example)
+├── .env.example        # Template
+└── tests/              # Test suite
 ```
 
-### Code Organization
+## 🔒 Security
 
-**server.js** contains:
+- **CORS** - Restricts to specified frontend URLs only
+- **Helmet** - HTTP headers security
+- **Compression** - Response compression
+- **Rate Limiting** - Built-in request throttling
+- **No Auth** - Auth handled by frontend API
+- **No Storage** - No sensitive data kept in memory
 
-- HTTP server creation
-- Socket.IO configuration with CORS
-- User mapping storage (userId ↔ socketId)
-- Event handlers for all Socket.IO events
-- Health check endpoint
-- Server startup logic
+## 🚨 Troubleshooting
 
-All code is thoroughly commented with:
-
-- File-level documentation
-- Function/handler documentation
-- Inline explanations for complex logic
-- Event parameter descriptions
-
-### Testing Locally
-
-1. **Start backend server:**
-
-   ```bash
-   npm start
-   ```
-
-2. **Start frontend app:**
-
-   ```bash
-   cd ../webchat-app
-   npm run dev
-   ```
-
-3. **Open multiple browser tabs:**
-
-   - http://localhost:3000 (Tab 1)
-   - http://localhost:3000 (Tab 2)
-   - Login as different users
-   - Send messages and see real-time delivery
-
-4. **Check health endpoint:**
-   ```bash
-   curl http://localhost:3001/health
-   ```
-
-## Troubleshooting
-
-### Port Already in Use
-
-**Windows:**
-
+**Port Already in Use:**
 ```powershell
+# Windows
 Get-Process node | Stop-Process -Force
-```
 
-**Linux/Mac:**
-
-```bash
+# Linux/Mac
 lsof -i :3001 | grep LISTEN | awk '{print $2}' | xargs kill -9
 ```
 
-### CORS Errors
+**CORS Errors:**
+- Verify `FRONTEND_URL` matches frontend exactly
+- Check http/https protocols match
+- Ensure `NEXT_PUBLIC_SOCKET_URL` on frontend points to this server
 
-- Ensure `FRONTEND_URL` in `.env` matches your frontend URL exactly
-- Check that frontend's `NEXT_PUBLIC_SOCKET_URL` points to this server
-- Verify both http/https protocols match
-
-### Connection Issues
-
-- Check that both frontend and backend are running
-- Verify network connectivity (firewall, VPN)
+**Connection Failed:**
+- Check both server and frontend are running
+- Verify firewall allows port 3001
 - Check browser console for WebSocket errors
-- Review server logs for connection attempts
+- Test health endpoint: `curl http://localhost:3001/health`
 
-### WebRTC Call Issues
+**WebRTC Call Issues:**
+- Ensure both users are online
+- Grant browser camera/microphone permissions
+- Check ICE candidate exchange in browser DevTools
+- Test peer-to-peer connectivity
 
-- Ensure both peers are online and connected
-- Check browser permissions for camera/microphone
-- Review ICE candidate exchange in network tab
-- Test with STUN/TURN servers if behind restrictive NAT
+## 📝 Development Notes
 
-## Monitoring
+- Server logs all Socket.IO events for debugging
+- Health endpoint useful for uptime monitoring
+- Memory usage scales linearly with active connections (~100 bytes/user)
+- CPU usage minimal (just forwarding)
+- Can handle thousands of concurrent connections
 
-### Server Logs
-
-The server logs all important events:
-
-- ✓ Socket connections
-- 👤 User joins/disconnects
-- 📨 Message routing
-- 📞 Call signaling
-- 🧊 ICE candidate exchanges
-- ❌ Errors and warnings
-
-### Health Checks
-
-Query the health endpoint periodically:
-
-```bash
-curl http://localhost:3001/health
-```
-
-Use for:
-
-- Deployment health checks
-- Monitoring tools (UptimeRobot, Pingdom)
-- Load balancer health probes
-
-## Security Considerations
-
-- **CORS** - Restricts connections to specified origins
-- **No Authentication** - Auth handled by frontend API
-- **No Message Storage** - Messages stored in database, not here
-- **Transport Security** - Use WSS (WebSocket Secure) in production
-- **Rate Limiting** - Consider adding for production
-
-## Performance
-
-- **Memory Usage** - Maps scale with active users (~100 bytes/user)
-- **CPU Usage** - Minimal (just forwarding messages)
-- **Network** - Scales well (P2P media doesn't go through server)
-- **Connections** - Can handle thousands of concurrent WebSocket connections
-
-## Contributing
-
-Contributions welcome! To contribute:
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes with proper comments
+2. Create feature branch (`git checkout -b feature/name`)
+3. Make changes with clear comments
 4. Test thoroughly
-5. Submit a pull request
+5. Submit pull request
 
-## License
+## 📄 License
 
-MIT License - Free for personal and commercial use.
-
-## Support
-
-For help:
-
-- Check server logs in terminal
-- Review code comments in `server.js`
-- Test health endpoint: `curl http://localhost:3001/health`
-- Open GitHub issue with error details
+MIT License - Open source and free for any use
 
 ---
 
-**Built with Socket.IO and Node.js**
+**Repository:** [github.com/chahinsellami/webchat-backend](https://github.com/chahinsellami/webchat-backend)  
+**Frontend:** [github.com/chahinsellami/chatapp](https://github.com/chahinsellami/chatapp)
