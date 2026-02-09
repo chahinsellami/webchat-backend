@@ -235,7 +235,33 @@ io.on("connection", (socket) => {
      * Uses io.emit to send to everyone
      */
     io.emit("user-online", userId);
+    io.emit("user-status-change", { userId, status: "online" });
     console.log(`📢 Broadcast user-online for ${userId} to all clients`);
+  });
+
+  /**
+   * Status Change Event Handler
+   *
+   * Fired by the client's presence tracker when status changes
+   * (online → idle, idle → online, beforeunload → offline, etc.)
+   * Broadcasts the status change to all connected clients.
+   *
+   * @event status-change
+   * @param {Object} data - { userId: string, status: string }
+   */
+  socket.on("status-change", (data) => {
+    if (!data || !data.userId || !data.status) return;
+
+    const validStatuses = ["online", "idle", "dnd", "invisible", "offline"];
+    if (!validStatuses.includes(data.status)) return;
+
+    console.log(`🔄 Status change: ${data.userId} → ${data.status}`);
+
+    // Broadcast to all connected clients
+    io.emit("user-status-change", {
+      userId: data.userId,
+      status: data.status,
+    });
   });
 
   /**
@@ -581,6 +607,7 @@ io.on("connection", (socket) => {
        * This updates their online status indicators in real-time
        */
       io.emit("user-offline", userId);
+      io.emit("user-status-change", { userId, status: "offline" });
       console.log(`📢 Broadcast user-offline for ${userId} to all clients`);
     }
   });
