@@ -56,7 +56,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST"],
-  })
+  }),
 );
 
 // Health check endpoint
@@ -92,12 +92,34 @@ const httpServer = createServer(app);
  * - Ping timeout for dead connection detection
  */
 const io = new Server(httpServer, {
-  cors: false, // CORS is now handled by Express
+  cors: {
+    origin: function (origin, callback) {
+      // Allow ngrok URLs and other origins
+      const allowedOrigins = [
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://192.168.100.12:3000",
+        "http://192.168.100.12:3001",
+        "https://chatapp-two-drab.vercel.app",
+      ];
+
+      // Check if origin matches ngrok pattern
+      const isNgrok = origin && origin.includes("ngrok");
+
+      if (!origin || allowedOrigins.includes(origin) || isNgrok) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  },
   transports: ["websocket", "polling"],
-  pingTimeout: 60000, // Disconnect if no pong received in 60 seconds
-  pingInterval: 25000, // Send ping every 25 seconds
-  maxHttpBufferSize: 1e6, // 1MB max message size
-  allowEIO3: true, // Allow backwards compatibility
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  maxHttpBufferSize: 1e6,
+  allowEIO3: true,
 });
 
 /**
@@ -201,11 +223,19 @@ io.on("connection", (socket) => {
     console.log(`👤 User ${userId} joined with socket ${socket.id}`);
     console.log(`📊 Active users: ${Array.from(users.keys()).join(", ")}`);
 
+    // Send the new user a list of all currently online users (except themselves)
+    const onlineUserIds = Array.from(users.keys()).filter(
+      (id) => id !== userId,
+    );
+    socket.emit("user-list", onlineUserIds);
+    console.log(`📤 Sent online users list to ${userId}:`, onlineUserIds);
+
     /**
-     * Notify all other connected clients that this user is now online
-     * Uses broadcast to send to everyone except the sender
+     * Notify ALL connected clients (including this user) that this user is now online
+     * Uses io.emit to send to everyone
      */
-    socket.broadcast.emit("user-online", userId);
+    io.emit("user-online", userId);
+    console.log(`📢 Broadcast user-online for ${userId} to all clients`);
   });
 
   /**
@@ -537,16 +567,21 @@ io.on("connection", (socket) => {
 
     if (userId) {
       console.log(`👋 User ${userId} disconnected`);
+      console.log(`📊 Active users before disconnect: ${Array.from(users.keys()).join(", ")}`);
 
       // Remove user from both maps to free memory
       users.delete(userId);
       socketToUser.delete(socket.id);
 
+      console.log(`📊 Active users after disconnect: ${Array.from(users.keys()).join(", ")}`);
+
       /**
-       * Notify all other connected users that this person is offline
+       * Notify ALL connected clients that this person is offline
+       * Uses io.emit instead of socket.broadcast.emit so all clients get the update
        * This updates their online status indicators in real-time
        */
-      socket.broadcast.emit("user-offline", userId);
+      io.emit("user-offline", userId);
+      console.log(`📢 Broadcast user-offline for ${userId} to all clients`);
     }
   });
 });
@@ -569,6 +604,6 @@ httpServer.listen(PORT, () => {
   console.log(`🌐 Accepting connections from: ${FRONTEND_URL}`);
   console.log(`🔒 Security features enabled`);
   console.log(
-    `⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`
+    `⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`,
   );
 });

@@ -18,17 +18,18 @@ A real-time messaging and WebRTC signaling server powering the WebChat applicati
 
 ## 🛠️ Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| **Runtime** | Node.js 18+ |
-| **Framework** | Express 5.1 |
-| **Real-time** | Socket.IO 4.8 |
-| **Security** | Helmet, CORS, HPP, Express Rate Limit |
-| **Performance** | Compression, dotenv |
+| Component       | Technology                            |
+| --------------- | ------------------------------------- |
+| **Runtime**     | Node.js 18+                           |
+| **Framework**   | Express 5.1                           |
+| **Real-time**   | Socket.IO 4.8                         |
+| **Security**    | Helmet, CORS, HPP, Express Rate Limit |
+| **Performance** | Compression, dotenv                   |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18 or higher
 - Git
 
@@ -82,12 +83,13 @@ Check health: **http://localhost:3001/health**
 
 ### HTTP Endpoints
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/` | GET | Health check |
-| `/health` | GET | Server status with metrics |
+| Endpoint  | Method | Purpose                    |
+| --------- | ------ | -------------------------- |
+| `/`       | GET    | Health check               |
+| `/health` | GET    | Server status with metrics |
 
 **Health Response:**
+
 ```json
 {
   "status": "ok",
@@ -103,46 +105,49 @@ Check health: **http://localhost:3001/health**
 
 #### Client → Server
 
-| Event | Payload | Purpose |
-|-------|---------|---------|
-| `join` | `{userId}` | Register user connection |
-| `send-message` | `{messageId, senderId, receiverId, text}` | Send message |
-| `typing` | `{senderId, receiverId, isTyping}` | Typing indicator |
-| `call-user` | `{from, to, signal, callType}` | Initiate call |
-| `accept-call` | `{to, signal}` | Accept call |
-| `reject-call` | `{to}` | Reject call |
-| `end-call` | `{to}` | End call |
-| `ice-candidate` | `{to, candidate}` | WebRTC ICE candidate |
+| Event           | Payload                                   | Purpose                  |
+| --------------- | ----------------------------------------- | ------------------------ |
+| `join`          | `{userId}`                                | Register user connection |
+| `send-message`  | `{messageId, senderId, receiverId, text}` | Send message             |
+| `typing`        | `{senderId, receiverId, isTyping}`        | Typing indicator         |
+| `call-user`     | `{from, to, signal, callType}`            | Initiate call            |
+| `accept-call`   | `{to, signal}`                            | Accept call              |
+| `reject-call`   | `{to}`                                    | Reject call              |
+| `end-call`      | `{to}`                                    | End call                 |
+| `ice-candidate` | `{to, candidate}`                         | WebRTC ICE candidate     |
 
 #### Server → Client
 
-| Event | Payload | Purpose |
-|-------|---------|---------|
-| `user-online` | `{userId}` | User came online |
-| `user-offline` | `{userId}` | User went offline |
-| `receive-message` | `{messageId, senderId, text}` | Receive message |
-| `user-typing` | `{userId, isTyping}` | User typing status |
-| `incoming-call` | `{from, signal, callType}` | Incoming call |
-| `call-accepted` | `{signal}` | Call accepted |
-| `call-rejected` | - | Call rejected |
-| `call-ended` | - | Call ended |
-| `ice-candidate` | `{candidate}` | ICE candidate from peer |
+| Event             | Payload                       | Purpose                 |
+| ----------------- | ----------------------------- | ----------------------- |
+| `user-online`     | `{userId}`                    | User came online        |
+| `user-offline`    | `{userId}`                    | User went offline       |
+| `receive-message` | `{messageId, senderId, text}` | Receive message         |
+| `user-typing`     | `{userId, isTyping}`          | User typing status      |
+| `incoming-call`   | `{from, signal, callType}`    | Incoming call           |
+| `call-accepted`   | `{signal}`                    | Call accepted           |
+| `call-rejected`   | -                             | Call rejected           |
+| `call-ended`      | -                             | Call ended              |
+| `ice-candidate`   | `{candidate}`                 | ICE candidate from peer |
 
 ## 🏗️ Architecture
 
 **Connection Flow:**
+
 1. Client connects via WebSocket
 2. Client emits `join` with userId
 3. Server stores userId ↔ socketId mapping
 4. Server broadcasts `user-online` to other clients
 
 **Message Flow:**
+
 1. Sender emits `send-message`
 2. Server forwards to receiver's socket
 3. Receiver displays instantly
 4. No server storage (handled by database)
 
 **WebRTC Call Flow:**
+
 1. Caller creates offer → emits `call-user`
 2. Server forwards via `incoming-call` to receiver
 3. Receiver creates answer → emits `accept-call`
@@ -152,17 +157,20 @@ Check health: **http://localhost:3001/health**
 ## 🧪 Development
 
 **Auto-reload on changes:**
+
 ```bash
 npm run dev
 ```
 
 **Run tests:**
+
 ```bash
 npm test
 npm run test:coverage
 ```
 
 **Project Structure:**
+
 ```
 backend-server/
 ├── server.js           # Main Socket.IO + Express server
@@ -184,6 +192,7 @@ backend-server/
 ## 🚨 Troubleshooting
 
 **Port Already in Use:**
+
 ```powershell
 # Windows
 Get-Process node | Stop-Process -Force
@@ -193,17 +202,20 @@ lsof -i :3001 | grep LISTEN | awk '{print $2}' | xargs kill -9
 ```
 
 **CORS Errors:**
+
 - Verify `FRONTEND_URL` matches frontend exactly
 - Check http/https protocols match
 - Ensure `NEXT_PUBLIC_SOCKET_URL` on frontend points to this server
 
 **Connection Failed:**
+
 - Check both server and frontend are running
 - Verify firewall allows port 3001
 - Check browser console for WebSocket errors
 - Test health endpoint: `curl http://localhost:3001/health`
 
 **WebRTC Call Issues:**
+
 - Ensure both users are online
 - Grant browser camera/microphone permissions
 - Check ICE candidate exchange in browser DevTools
