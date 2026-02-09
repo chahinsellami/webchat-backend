@@ -29,7 +29,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=https://chatapp-two-drab.vercel.app
       - DATABASE_URL=postgresql://webchat:webchat123@postgres:5432/webchat
     depends_on:
       postgres:
