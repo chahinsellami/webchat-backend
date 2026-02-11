@@ -172,8 +172,6 @@ io.on("connection", (socket) => {
     socket.handshake.address ||
     "unknown";
 
-  console.log(`✓ Socket connected: ${socket.id} from ${clientIP}`);
-
   // Check connection rate limit
   const now = Date.now();
   const attempts = connectionAttempts.get(clientIP) || {
@@ -185,7 +183,6 @@ io.on("connection", (socket) => {
     attempts.count >= MAX_CONNECTIONS_PER_IP &&
     now - attempts.timestamp < CONNECTION_WINDOW
   ) {
-    console.warn(`⚠️  Rate limit exceeded for IP: ${clientIP}`);
     socket.emit("error", {
       message: "Too many connection attempts. Please try again later.",
     });
@@ -211,24 +208,17 @@ io.on("connection", (socket) => {
    */
   socket.on("join", (userId) => {
     // Validate that userId was provided
-    if (!userId) {
-      console.warn("⚠️  Join event received without userId");
-      return;
-    }
+    if (!userId) return;
 
     // Store bidirectional mappings for quick lookups
     users.set(userId, socket.id);
     socketToUser.set(socket.id, userId);
-
-    console.log(`👤 User ${userId} joined with socket ${socket.id}`);
-    console.log(`📊 Active users: ${Array.from(users.keys()).join(", ")}`);
 
     // Send the new user a list of all currently online users (except themselves)
     const onlineUserIds = Array.from(users.keys()).filter(
       (id) => id !== userId,
     );
     socket.emit("user-list", onlineUserIds);
-    console.log(`📤 Sent online users list to ${userId}:`, onlineUserIds);
 
     /**
      * Notify ALL connected clients (including this user) that this user is now online
@@ -236,7 +226,6 @@ io.on("connection", (socket) => {
      */
     io.emit("user-online", userId);
     io.emit("user-status-change", { userId, status: "online" });
-    console.log(`📢 Broadcast user-online for ${userId} to all clients`);
   });
 
   /**
@@ -254,8 +243,6 @@ io.on("connection", (socket) => {
 
     const validStatuses = ["online", "idle", "dnd", "invisible", "offline"];
     if (!validStatuses.includes(data.status)) return;
-
-    console.log(`🔄 Status change: ${data.userId} → ${data.status}`);
 
     // Broadcast to all connected clients
     io.emit("user-status-change", {
@@ -296,26 +283,14 @@ io.on("connection", (socket) => {
       !data.receiverId ||
       !data.text
     ) {
-      console.warn("⚠️  Invalid message data received");
       return;
     }
 
     // Check message length
-    if (data.text.length > 5000) {
-      console.warn("⚠️  Message too long");
-      return;
-    }
-
-    console.log("📨 Message received on server:", {
-      messageId: data.messageId,
-      from: data.senderId,
-      to: data.receiverId,
-      text: data.text.substring(0, 50) + "...", // Log first 50 chars only
-    });
+    if (data.text.length > 5000) return;
 
     // Look up the receiver's socket ID from their user ID
     const receiverSocketId = users.get(data.receiverId);
-    console.log(`👤 Receiver ${data.receiverId} socket: ${receiverSocketId}`);
 
     // Only send if receiver is online (has an active socket connection)
     if (receiverSocketId) {
@@ -327,10 +302,6 @@ io.on("connection", (socket) => {
         text: data.text,
         createdAt: data.createdAt,
       });
-      console.log(`✅ Sending message to socket ${receiverSocketId}`);
-    } else {
-      // Receiver is offline - message will be delivered when they next load the chat
-      console.log(`❌ Receiver ${data.receiverId} not connected`);
     }
   });
 
@@ -401,16 +372,7 @@ io.on("connection", (socket) => {
    * @param {string} data.callType - Type of call: "voice" or "video"
    */
   socket.on("call-user", (data) => {
-    console.log(`📞 Call initiated:`, {
-      from: data.from,
-      to: data.to,
-      callType: data.callType,
-      hasSignal: !!data.signal,
-    });
-
-    // Look up recipient's socket
     const receiverSocketId = users.get(data.to);
-    console.log(`🔍 Receiver ${data.to} socketId: ${receiverSocketId}`);
 
     if (receiverSocketId) {
       // Forward the call offer to the recipient
@@ -419,10 +381,7 @@ io.on("connection", (socket) => {
         signal: data.signal,
         callType: data.callType,
       });
-      console.log(`✅ Call signal sent to ${receiverSocketId}`);
     } else {
-      // Recipient is offline - notify caller that call failed
-      console.log(`❌ Receiver ${data.to} not connected`);
       socket.emit("call-failed", { reason: "User not online" });
     }
   });
@@ -441,17 +400,7 @@ io.on("connection", (socket) => {
    * @param {string} data.callerName - Display name of the caller
    */
   socket.on("call-request", (data) => {
-    console.log(`📞 Agora call initiated:`, {
-      from: socket.userId,
-      to: data.to,
-      channelName: data.channelName,
-      callType: data.callType,
-      callerName: data.callerName,
-    });
-
-    // Look up recipient's socket
     const receiverSocketId = users.get(data.to);
-    console.log(`🔍 Receiver ${data.to} socketId: ${receiverSocketId}`);
 
     if (receiverSocketId) {
       // Forward the call request to the recipient
@@ -461,10 +410,7 @@ io.on("connection", (socket) => {
         callType: data.callType,
         callerName: data.callerName,
       });
-      console.log(`✅ Call request sent to ${receiverSocketId}`);
     } else {
-      // Recipient is offline - notify caller that call failed
-      console.log(`❌ Receiver ${data.to} not connected`);
       socket.emit("call-failed", { reason: "User not online" });
     }
   });
@@ -482,21 +428,13 @@ io.on("connection", (socket) => {
    * @param {RTCSessionDescription} data.signal - WebRTC answer (SDP)
    */
   socket.on("accept-call", (data) => {
-    console.log(`✅ Call accepted by user, sending to ${data.to}`);
-
-    // Look up caller's socket
     const callerSocketId = users.get(data.to);
-    console.log(`🔍 Caller socketId: ${callerSocketId}`);
 
     if (callerSocketId) {
       // Forward the answer signal to the caller
       io.to(callerSocketId).emit("call-accepted", {
         signal: data.signal,
       });
-      console.log(`✅ Acceptance signal sent to ${callerSocketId}`);
-    } else {
-      // Caller disconnected before call was accepted
-      console.log(`❌ Caller ${data.to} no longer connected`);
     }
   });
 
@@ -511,14 +449,11 @@ io.on("connection", (socket) => {
    * @param {string} data.to - User ID of the caller to notify
    */
   socket.on("reject-call", (data) => {
-    console.log(`❌ Call rejected, notifying ${data.to}`);
-
     const callerSocketId = users.get(data.to);
 
     if (callerSocketId) {
       // Notify caller that call was rejected
       io.to(callerSocketId).emit("call-rejected");
-      console.log(`✅ Rejection sent to ${callerSocketId}`);
     }
   });
 
@@ -533,14 +468,11 @@ io.on("connection", (socket) => {
    * @param {string} data.to - User ID of the other party in the call
    */
   socket.on("end-call", (data) => {
-    console.log(`📵 Call ended, notifying ${data.to}`);
-
     const otherUserSocketId = users.get(data.to);
 
     if (otherUserSocketId) {
       // Notify other party that call has ended
       io.to(otherUserSocketId).emit("call-ended");
-      console.log(`✅ End call signal sent to ${otherUserSocketId}`);
     }
   });
 
@@ -560,8 +492,6 @@ io.on("connection", (socket) => {
    * @param {RTCIceCandidate} data.candidate - The ICE candidate object
    */
   socket.on("ice-candidate", (data) => {
-    console.log(`🧊 ICE candidate from socket ${socket.id} to user ${data.to}`);
-
     const receiverSocketId = users.get(data.to);
 
     if (receiverSocketId) {
@@ -569,7 +499,6 @@ io.on("connection", (socket) => {
       io.to(receiverSocketId).emit("ice-candidate", {
         candidate: data.candidate,
       });
-      console.log(`✅ ICE candidate sent to ${receiverSocketId}`);
     }
   });
 
@@ -592,14 +521,8 @@ io.on("connection", (socket) => {
     const userId = socketToUser.get(socket.id);
 
     if (userId) {
-      console.log(`👋 User ${userId} disconnected`);
-      console.log(`📊 Active users before disconnect: ${Array.from(users.keys()).join(", ")}`);
-
-      // Remove user from both maps to free memory
       users.delete(userId);
       socketToUser.delete(socket.id);
-
-      console.log(`📊 Active users after disconnect: ${Array.from(users.keys()).join(", ")}`);
 
       /**
        * Notify ALL connected clients that this person is offline
@@ -608,7 +531,6 @@ io.on("connection", (socket) => {
        */
       io.emit("user-offline", userId);
       io.emit("user-status-change", { userId, status: "offline" });
-      console.log(`📢 Broadcast user-offline for ${userId} to all clients`);
     }
   });
 });
@@ -626,11 +548,5 @@ io.on("connection", (socket) => {
  * - Log startup information to console
  */
 httpServer.listen(PORT, () => {
-  console.log(`\n🚀 WebChat Backend Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO ready for connections`);
-  console.log(`🌐 Accepting connections from: ${FRONTEND_URL}`);
-  console.log(`🔒 Security features enabled`);
-  console.log(
-    `⏱️  Rate limiting: ${MAX_CONNECTIONS_PER_IP} connections per minute per IP\n`,
-  );
+  console.log(`WebChat server running on port ${PORT}`);
 });
